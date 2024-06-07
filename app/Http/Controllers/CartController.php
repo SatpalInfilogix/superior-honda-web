@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Coupon;
 use App\Models\Country;
 use App\Models\Order;
+use App\Models\Cart;
 use Illuminate\Support\Facades\Auth;
 
 class CartController extends Controller
@@ -85,7 +86,16 @@ class CartController extends Controller
         }
         
         $cart['count']  = count($cart['products']);
-        session()->put('cart', $cart);     
+        session()->put('cart', $cart);
+
+        if (Auth::check()) {
+            $user_id = Auth::id();
+            // Save or update cart data in the database
+            Cart::updateOrCreate(
+                ['user_id' => $user_id],
+                ['cart' => json_encode($cart)]
+            );
+        }
 
         return redirect()->back()->with('success', 'Product added to cart successfully!');
     }
@@ -141,6 +151,13 @@ class CartController extends Controller
             }
             $cart['count']  = count($cart['products']);
             session()->put('cart', $cart);
+            if (Auth::check()) {
+                $user_id = Auth::id();
+                Cart::updateOrCreate(
+                    ['user_id' => $user_id],
+                    ['cart' => json_encode($cart)]
+                );
+            }
 
             return response()->json([
                 'success' => true,
@@ -170,18 +187,16 @@ class CartController extends Controller
                 }
             }
 
-            // if (isset($cart['products'][$request->product_id])) {
-                // Recalculate cart total quantity
-                $cart_quantity = 0;
-                foreach ($cart['products'] as $product) {
-                    $cart_quantity += $product['quantity'];
-                }
-                // Recalculate cart total amount
-                $sub_total = 0;
-                foreach ($cart['products'] as $product) {
-                    $sub_total += $product['price'] * $product['quantity']; // Corrected accessing price
-                }
-            // }
+            // Recalculate cart total quantity
+            $cart_quantity = 0;
+            foreach ($cart['products'] as $product) {
+                $cart_quantity += $product['quantity'];
+            }
+            // Recalculate cart total amount
+            $sub_total = 0;
+            foreach ($cart['products'] as $product) {
+                $sub_total += $product['price'] * $product['quantity']; // Corrected accessing price
+            }
 
             // Update cart object
             $cart['quantity'] = $cart_quantity;
@@ -191,7 +206,7 @@ class CartController extends Controller
             $applied_coupons = $cart['applied_coupons'] ?? [];
             $cart['applied_coupons'] = $applied_coupons;
 
-            if($cart['applied_coupons']) {
+            if($cart['applied_coupons'] &&  count($cart['products']) > 0) {
                 $sub_total -= $cart['discount_amount'];
                 $cart['grand_total'] =  $sub_total;
                 $cart['formatted_grand_total'] = '$'. Number_Format( $cart['grand_total'] , 2);
@@ -206,6 +221,14 @@ class CartController extends Controller
 
             session()->put('cart', $cart);
 
+            if (Auth::check()) {
+                $user_id = Auth::id();
+                Cart::updateOrCreate(
+                    ['user_id' => $user_id],
+                    ['cart' => json_encode($cart)]
+                );
+            }
+
             return response()->json([
                 'success' => true,
                 'cart'    => $cart,
@@ -217,6 +240,10 @@ class CartController extends Controller
     public function clearCart(Request $request)
     {
         $request->session()->flush();
+
+        if (Auth::check()) {
+            Cart::where('user_id', Auth::id())->delete();
+        }
 
         return redirect()->back()->with('success', 'All Products removed from cart');
     }
@@ -231,32 +258,55 @@ class CartController extends Controller
 
         if($couponExists) {
             $cart = session()->get('cart');
+            if(session('cart')['products']) {
+                $discountAmount = 0;
+                if ($couponExists->discount_type === 'percentage') {
+                    $discountAmount = ($couponExists->discount_amount / 100) * $cart['sub_total'];
+                } else if ($couponExists->discount_type === 'fixed') {
+                    $discountAmount = $couponExists->discount_amount;
+                }
 
-            $discountAmount = 0;
-            if ($couponExists->discount_type === 'percentage') {
-                $discountAmount = ($couponExists->discount_amount / 100) * $cart['sub_total'];
-            } else if ($couponExists->discount_type === 'fixed') {
-                $discountAmount = $couponExists->discount_amount;
+                $cart['grand_total'] -= $discountAmount;
+                $cart['formatted_grand_total'] = '$'. Number_Format( $cart['grand_total'] , 2);
+                $cart['discount_amount'] = $discountAmount;
+
+                if($request->type == 'applied') {
+                    $cart['applied_coupons'] = [
+                        'id'              => $couponExists->id,
+                        'coupon_code'     => $couponExists->coupon_code,
+                        'discount_type'   => $couponExists->discount_type,
+                        'discount_amount' => $couponExists->discount_amount,
+                        'use_limit'       => $couponExists->use_limit
+                    ];
+                } else {
+                    unset($cart['applied_coupons']);
+
+                    $applied_coupons = $cart['applied_coupons'] ?? [];
+                    $cart['applied_coupons'] = $applied_coupons;
+                    $cart['grand_total'] = $cart['sub_total'];
+                    $cart['formatted_grand_total'] = '$'. Number_Format( $cart['sub_total'] , 2);
+                    $cart['discount_amount'] = '$'. 0.00;
+                }
+
+                session()->put('cart', $cart);
+                if (Auth::check()) {
+                    Cart::updateOrCreate(
+                        ['user_id' => Auth::id()],
+                        ['cart' => json_encode($cart)]
+                    );
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'cart'    => $cart,
+                    'message' => 'Coupon code applied'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'cart item is empty.'
+                ]);
             }
-
-            $cart['grand_total'] -= $discountAmount;
-            $cart['formatted_grand_total'] = '$'. Number_Format( $cart['grand_total'] , 2);
-            $cart['discount_amount'] = $discountAmount;
-
-            $cart['applied_coupons'][] = [
-                'id'              => $couponExists->id,
-                'coupon_code'     => $couponExists->coupon_code,
-                'discount_type'   => $couponExists->discount_type,
-                'discount_amount' => $couponExists->discount_amount,
-                'use_limit'       => $couponExists->use_limit
-            ];
-
-            session()->put('cart', $cart);
-            return response()->json([
-                'success' => true,
-                'cart'    => $cart,
-                'message' => 'Coupon code applied'
-            ]);
         } else {
             return response()->json([
                 'success' => false,

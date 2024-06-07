@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use App\Models\Cart;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 
@@ -32,6 +33,21 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+
+            $cart = session('cart');
+            if ($cart && Auth::check()) {
+                Cart::updateOrCreate(
+                    ['user_id' => Auth::id()],
+                    ['cart' => json_encode($cart)]
+                );
+            }
+
+            $cartData = Cart::where('user_id', Auth::id())->first();
+            if ($cartData) {
+                $cart = json_decode($cartData->cart, true);
+                session()->put('cart', $cart);
+            }
+
             return redirect()->intended('/');
         }
 
@@ -103,7 +119,7 @@ class AuthController extends Controller
             'last_name'  => $request->last_name,
             'email'      => $request->email,
             'phone_number' => $request->phone_number,
-            'password'    => Hash::make('password')
+            'password'    => Hash::make($request->password)
         ])->assignRole('Customer');
 
         return redirect('/login')->with('success', 'Registration successful! Please login.');

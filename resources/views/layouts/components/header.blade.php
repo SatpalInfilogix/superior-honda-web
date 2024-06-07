@@ -1,3 +1,14 @@
+<?php 
+$logo_url= DB::table('settings')->where('key','logo')->first();
+
+if($logo_url)
+{
+    $logo_url = $logo_url->value;}
+else{
+    $logo_url = '';
+}
+?>
+
 <div id="preloader">
     <div id="ctn-preloader" class="ctn-preloader">
         <div class="animation-preloader">
@@ -43,6 +54,7 @@
 <header class="header__section">
     <div class="main__header header__sticky">
         <div class="container">
+            <?php  $wishlist = App\Models\Wishlist::where('user_id', Auth::id())->count(); ?>
             <div class="main__header--inner position__relative d-flex justify-content-between align-items-center">
                 <div class="offcanvas__header--menu__open ">
                     <a class="offcanvas__header--menu__open--btn" href="javascript:void(0)" data-offcanvas>
@@ -56,7 +68,7 @@
                 </div>
                 <div class="main__logo">
                     <h1 class="main__logo--title"><a class="main__logo--link" href="#"><img
-                                class="main__logo--img" src="{{ asset('assets/images/logo/nav-log.webp') }}"
+                        class="main__logo--img" src="@if($logo_url){{env('BASE_IMAGE_PATH')}}{{$logo_url}}@else{{ asset('assets/images/logo/nav-log.webp') }}@endif"
                                 alt="logo-img"></a></h1>
                 </div>
                 <div class="header__search--widget d-none d-lg-block header__sticky--none">
@@ -162,7 +174,7 @@
                                         d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
                                     </path>
                                 </svg>
-                                <span class="items__count">3</span>
+                                <span class="items__count wishlist">{{ $wishlist }}</span>
                             </a>
                         </li>
                         <li class="header__account--items header__minicart--items">
@@ -184,8 +196,7 @@
                                         </g>
                                     </g>
                                 </svg>
-                                <span class="items__count">{{ session('cart')['count'] ?? 0 }}</span>
-                              
+                                <span class="items__count"> @if(session('cart')) {{ session('cart')['count'] }} @else 0 @endif</span>
                                 <span class="minicart__btn--text">My Cart <br> 
                                     @isset(session('cart')['formatted_sub_total'])
                                     <span class="minicart__btn--text__price totalAmount"><b>{{ session('cart')['formatted_sub_total'] }}</b></span>
@@ -243,7 +254,7 @@
                                         d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
                                     </path>
                                 </svg>
-                                <span class="items__count">3</span>
+                                <span class="items__count wishlist">{{ $wishlist }}</span>
                             </a>
                         </li>
                         <li class="header__account--items header__minicart--items">
@@ -265,7 +276,7 @@
                                         </g>
                                     </g>
                                 </svg>
-                                    <span class="items__count">{{ session('cart')['count'] ?? 0 }}</span>
+                                    <span class="items__count">@if(session('cart')) {{ session('cart')['count'] }} @else 0 @endif</span>
                             </a>
                         </li>
                     </ul>
@@ -1168,7 +1179,7 @@
                         </svg>
                     </span>
                     <span class="offcanvas__stikcy--toolbar__label">Cart</span>
-                    <span class="items__count">3</span>
+                    <span class="items__count"> @if(session('cart')) {{ session('cart')['count'] }} @else 0 @endif</span>
                 </a>
             </li>
             <li class="offcanvas__stikcy--toolbar__list">
@@ -1183,7 +1194,7 @@
                         </svg>
                     </span>
                     <span class="offcanvas__stikcy--toolbar__label">Wishlist</span>
-                    <span class="items__count">3</span>
+                    <span class="items__count wishlist">{{ $wishlist }}</span>
                 </a>
             </li>
         </ul>
@@ -1208,7 +1219,7 @@
                 @foreach (session('cart')['products'] as $key => $product)
                     <div class="minicart__product--items d-flex">
                         <div class="minicart__thumb">
-                            <a href="#"><img src="{{ env('BASE_IMAGE_PATH') . '/' . $product['image'] }}" alt="product-img"></a>
+                            <a href="#"><img src="{{ env('BASE_IMAGE_PATH')}}{{$product['image'] }}" alt="product-img"></a>
                         </div>
                         <div class="minicart__text">
                             <h4 class="minicart__subtitle"><a href="#">{{ $product['name'] }}</a></h4>
@@ -1243,7 +1254,7 @@
             </div>
             <div class="minicart__amount_list d-flex justify-content-between">
                 <span>Total:</span>
-                <span class="totalAmount"><b>{{ session('cart')['formatted_grand_total'] }}</b></span>
+                <span class="grandTotal"><b>{{ session('cart')['formatted_grand_total'] }}</b></span>
             </div>
         </div>
         <div class="minicart__conditions text-center">
@@ -1340,6 +1351,9 @@
                         let cart = response.cart.formatted_sub_total;
                         let amount = '<b>' + cart + '</b>';
                         $('.totalAmount').html(amount);
+
+                        let grandTotal = response.cart.formatted_grand_total;
+                        $('.grandTotal').html(grandTotal);
                     } else {
                         window.location.reload();
                     }
