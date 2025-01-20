@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Service;
 use App\Models\Review;
 use App\Models\Setting;
+use App\Models\Product;
+use App\Models\ProductImage;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
@@ -14,7 +16,10 @@ class ServiceController extends Controller
      */
     public function index()
     {
-        $services = Service::latest()->get();
+        $services = Product::with('ProductCategory','productImages')->whereHas('productCategory', function ($query) {
+            $query->whereNull('deleted_at');
+        })->where('is_service', 1)->whereNull('deleted_at')->latest()->get();
+        // $services = Service::latest()->get();
         $reviews = Review::with('user')->latest()->take(5)->get();
         $settingEmail   = Setting::where('key','email')->first();
         $settingContact = Setting::where('key','contact')->first();
@@ -41,8 +46,14 @@ class ServiceController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Service $service)
+    public function show($id)
     {
+        $service = Product::where('id', $id)->with('ProductCategory')->whereHas('productCategory', function ($query) {
+            $query->whereNull('deleted_at');
+        })->where('is_service', 1)->latest()->first();
+
+        $service['productImages'] = ProductImage::where('product_id', $service->id)->pluck('images')->first();
+
         $settingEmail   = Setting::where('key','email')->first();
         $settingContact = Setting::where('key','contact')->first();
 

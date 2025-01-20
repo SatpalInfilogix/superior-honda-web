@@ -19,11 +19,11 @@ class HomeController extends Controller
     {
         $today = Carbon::now();
     	$productCategory = ProductCategory::get();
-        $mainBanners = Banner::with('product')->where('type', 'main_banner')->where('status', 'active')->get();
-        $sideBanners = Banner::with('product')->where('type', 'side_banner')->where('size', '250*165 px')->where('status', 'active')->get();
-        $leftBanners = Banner::with('product')->where('type', 'side_banner')->where('size', '435*202 px')->where('status', 'active')->get();
-        $centerBanners = Banner::with('product')->where('type', 'center_banner')->where('size', '435*202 px')->where('status', 'active')->get();
-        $rightBanners = Banner::with('product')->where('type', 'side_banner')->where('size', '280*547 px')->where('status', 'active')->get();
+        $mainBanners = Banner::withActiveProducts()->where('type', 'main_banner')->where('status', 'active')->get();
+        $sideBanners = Banner::withActiveProducts()->where('type', 'side_banner')->where('size', '250*165 px')->where('status', 'active')->get();
+        $leftBanners = Banner::withActiveProducts()->where('type', 'side_banner')->where('size', '435*202 px')->where('status', 'active')->get();
+        $centerBanners = Banner::withActiveProducts()->where('type', 'center_banner')->where('size', '435*202 px')->where('status', 'active')->get();
+        $rightBanners = Banner::withActiveProducts()->where('type', 'side_banner')->where('size', '280*547 px')->where('status', 'active')->get();
         $salesProducts = SalesProduct::with('product')->where('status', 0)->whereDate('start_date', '<=', $today)->whereDate('end_date', '>=', $today)->get();
 
         foreach( $salesProducts as $salesKey => $salesProduct) {
@@ -67,7 +67,7 @@ class HomeController extends Controller
     private function getProductsDetailsWithImages($category_id)
     {
         $dataToReturn = [];
-        $productsData = Product::where('category_id',$category_id)->limit(8)->get();
+        $productsData = Product::where('category_id',$category_id)->whereNull('deleted_at')->limit(8)->get();
         foreach ($productsData as $key => $value) {
             # code...
             $productImages = ProductImage::where('product_id',$value->id)->get();
@@ -81,7 +81,7 @@ class HomeController extends Controller
     private function getPopularProductsDetailsWithImages()
     {
         $dataToReturn = [];
-        $productsData = Product::where('popular',1)->limit(8)->get();
+        $productsData = Product::where('popular',1)->whereNull('deleted_at')->limit(8)->get();
         foreach ($productsData as $key => $value) {
             # code...
             $productImages = ProductImage::where('product_id',$value->id)->get();

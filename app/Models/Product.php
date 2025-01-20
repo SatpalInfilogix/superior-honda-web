@@ -7,11 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\ProductImage;
 use App\Models\Wishlist;
 use App\Models\Review;
+use App\Models\ProductCategory;
+use App\Models\VehicleBrand;
 
 class Product extends Model
 {
     use HasFactory;
     protected $guarded = [];
+
+    public function productCategory()
+    {
+        return $this->belongsTo(ProductCategory::class, 'category_id');
+    }
 
     public function productImages()
     {
@@ -42,5 +49,15 @@ class Product extends Model
         ];
     
         return $data;
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function vehicleBrand()
+    {
+        return $this->belongsTo(VehicleBrand::class, 'brand_id');
     }
 }

@@ -1,6 +1,6 @@
 <?php 
 $logo_url= DB::table('settings')->where('key','logo')->first();
-$categoryData = DB::table('product_categories')->get();
+$categoryData = DB::table('product_categories')->whereNull('deleted_at')->get();
 // dd($categoryData);
 if($logo_url)
 {
@@ -79,20 +79,18 @@ else{
                                 alt="logo-img"></a></h1>
                 </div>
                 <div class="header__search--widget d-none d-lg-block header__sticky--none">
-                    <form class="d-flex header__search--form border-radius-5" action="#">
-                        <div class="header__select--categories select">
+                    <form class="d-flex header__search--form border-radius-5" action="{{ route('products.index') }}">
+                        <!-- <div class="header__select--categories select">
                             <select class="header__select--inner">
-                                <option selected value="1"> All categories</option>
-                                <option value="2">Accessories</option>
-                                <option value="3">Accessories & More</option>
-                                <option value="4">Camera & Video </option>
-                                <option value="5">Butters & Eggs </option>
+                                <option selected value="0"> All categories</option>
+                                @foreach($categoryData as $key =>  $category)
+                                <option value="{{$category->id}}">{{$category->name}}</option>
+                                @endforeach
                             </select>
-                        </div>
+                        </div> -->
                         <div class="header__search--box">
                             <label>
-                                <input class="header__search--input" placeholder="Search For Products..."
-                                    type="text">
+                                <input name="search" class="header__search--input product_name" placeholder="Search For Products..." type="text">
                             </label>
                             <button class="header__search--button bg__primary text-white" aria-label="search button"
                                 type="submit">
@@ -204,11 +202,11 @@ else{
                                     </g>
                                 </svg>
                                 <span class="items__count  item-count-cart"> @if(session('cart')) {{ session('cart')['count'] }} @else 0 @endif</span>
-                                <span class="minicart__btn--text">My Cart <br> 
+                                {{-- <span class="minicart__btn--text">My Cart <br> 
                                     @isset(session('cart')['formatted_sub_total'])
                                     <span class="minicart__btn--text__price totalAmount"><b>{{ session('cart')['formatted_sub_total'] }}</b></span>
                                     @endisset
-                                </span>
+                                </span> --}}
                             </a>
                         </li>
                     </ul>
@@ -1226,22 +1224,22 @@ else{
         <div class="minicart__product">
             @if (session('cart') && isset(session('cart')['products']))
                 @foreach (session('cart')['products'] as $key => $product)
-                    <div class="minicart__product--items d-flex">
+                    <div class="minicart__product--items d-flex remove-{{ $product['id'] }}">
                         <div class="minicart__thumb">
                             <a href="#"><img src="{{ env('BASE_IMAGE_PATH')}}{{$product['image'] }}" alt="product-img"></a>
                         </div>
                         <div class="minicart__text">
                             <h4 class="minicart__subtitle"><a href="#">{{ $product['name'] }}</a></h4>
-                            <span class="color__variant"><b>Color:</b> Beige</span>
+                            {{-- <span class="color__variant"><b>Color:</b> Beige</span> --}}
                             <div class="minicart__price">
                                 <span class="minicart__current--price">${{ $product['price'] }}</span> <!-- Assuming $product['price'] contains the price -->
                                 {{-- <span class="minicart__old--price">${{ $product['old_price'] }}</span> <!-- Assuming $product['old_price'] contains the old price --> --}}
                             </div>
-                            <div class="minicart__text--footer d-flex align-items-center">
+                            <div class="minicart__text--footer d-flex align-items-center remove-{{ $product['id'] }}">
                                 <div class="quantity__box minicart__quantity">
                                     <button type="button" class="quantity__value decrease" data-id = "{{ $product['id'] }}" aria-label="quantity value" value="Decrease Value">-</button>
                                     <label>
-                                        <input type="number" class="quantity__number" value="{{ $product['quantity'] }}" data-counter />
+                                        <input type="number" class="quantity__number-{{ $product['id'] }} quantity__number" value="{{ $product['quantity'] }}" data-counter />
                                     </label>
                                     <button type="button" class="quantity__value increase" data-id = "{{ $product['id'] }}" aria-label="quantity value" value="Increase Value">+</button>
                                 </div>
@@ -1288,9 +1286,9 @@ else{
     <div class="predictive__search--box ">
         <div class="predictive__search--box__inner">
             <h2 class="predictive__search--title">Search Products</h2>
-            <form class="predictive__search--form" action="#">
+            <form class="predictive__search--form" action="{{ route('products.index') }}">
                 <label>
-                    <input class="predictive__search--input" placeholder="Search Here" type="text">
+                    <input name="search" class="predictive__search--input" placeholder="Search Here" type="text">
                 </label>
                 <button class="predictive__search--button text-white" aria-label="search button"><svg
                         class="product__items--action__btn--svg" xmlns="http://www.w3.org/2000/svg" width="30.51"
